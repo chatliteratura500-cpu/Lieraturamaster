@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatliteratura - Tutor IA de Literatura</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #eef2f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            background: #2c3e66;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 span {
+            font-size: 1.5rem;
+        }
+        
+        .config-icon {
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        
+        .config-icon:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        /* Chat container */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* Message bubbles */
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .message.user {
+            background: #2c3e66;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .message.bot {
+            background: white;
+            color: #1a1a2e;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+        }
+        
+        .message.bot .bot-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .message .typing {
+            display: inline-block;
+            font-size: 1.2rem;
+        }
+        
+        .message .typing span {
+            animation: typing 1.4s infinite;
+            display: inline-block;
+        }
+        
+        .message .typing span:nth-child(2) { animation-delay: 0.2s; }
+        .message .typing span:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0; transform: translateY(0); }
+            30% { opacity: 1; transform: translateY(-5px); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Menu buttons */
+        .menu-container {
+            background: white;
+            padding: 12px 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            border-top: 1px solid #ddd;
+        }
+        
+        .menu-btn {
+            background: #2c3e66;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .menu-btn:hover {
+            background: #1a2a4a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(44, 62, 102, 0.3);
+        }
+        
+        .menu-btn.special {
+            background: #e67e22;
+        }
+        
+        .menu-btn.special:hover {
+            background: #d35400;
+        }
+        
+        /* Input area */
+        .input-area {
+            display: flex;
+            padding: 12px 20px;
+            background: white;
+            gap: 10px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .input-area input:focus {
+            border-color: #2c3e66;
+        }
+        
+        .input-area button {
+            background: #2c3e66;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .input-area button:hover {
+            background: #1a2a4a;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #2c3e66;
+        }
+        
+        .modal-content .close-btn {
+            float: right;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-content .close-btn:hover {
+            color: #000;
+        }
+        
+        .modal-content .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .modal-content .options button {
+            padding: 12px;
+            border: 2px solid #2c3e66;
+            background: white;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .modal-content .options button:hover {
+            background: #2c3e66;
+            color: white;
+        }
+        
+        .modal-content .options button.correct {
+            background: #27ae60;
+            color: white;
+            border-color: #27ae60;
+        }
+        
+        .modal-content .options button.incorrect {
+            background: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+        }
+        
+        .modal-content .options button:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        .modal-content .feedback {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .modal-content .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .modal-content .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .modal-content .quiz-result {
+            text-align: center;
+        }
+        
+        .modal-content .quiz-result .score {
+            font-size: 3rem;
+            color: #2c3e66;
+            margin: 20px 0;
+        }
+        
+        .modal-content .quiz-result .best-score {
+            color: #e67e22;
+            margin-bottom: 20px;
+        }
+        
+        .modal-content .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .modal-content .btn-group button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .modal-content .btn-group .btn-primary {
+            background: #2c3e66;
+            color: white;
+        }
+        
+        .modal-content .btn-group .btn-primary:hover {
+            background: #1a2a4a;
+        }
+        
+        .modal-content .btn-group .btn-secondary {
+            background: #e67e22;
+            color: white;
+        }
+        
+        .modal-content .btn-group .btn-secondary:hover {
+            background: #d35400;
+        }
+        
+        /* Config modal */
+        .config-modal input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin: 10px 0;
+        }
+        
+        .config-modal .btn-save {
+            background: #2c3e66;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+        }
+        
+        .config-modal .btn-save:hover {
+            background: #1a2a4a;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1rem;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+            
+            .menu-btn {
+                font-size: 0.75rem;
+                padding: 6px 12px;
+            }
+            
+            .input-area input {
+                font-size: 0.9rem;
+            }
+            
+            .input-area button {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        /* Scrollbar */
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #2c3e66;
+            border-radius: 3px;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: #1a2a4a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <span>📚</span> Chatliteratura
+        </h1>
+        <div class="config-icon" id="configIcon" title="Configuración (doble clic)">⚙️</div>
+    </div>
+    
+    <div class="chat-container" id="chatContainer">
+        <!-- Los mensajes se añadirán aquí -->
+    </div>
+    
+    <div class="menu-container">
+        <button class="menu-btn" data-topic="Teatro">🎭 Teatro</button>
+        <button class="menu-btn" data-topic="Narrativa">📖 Narrativa</button>
+        <button class="menu-btn" data-topic="Poesía">📝 Poesía</button>
+        <button class="menu-btn" data-topic="Ensayo">✍️ Ensayo</button>
+        <button class="menu-btn" data-topic="Prueba 1">📝 Prueba 1</button>
+        <button class="menu-btn" data-topic="Prueba 2">📝 Prueba 2</button>
+        <button class="menu-btn" data-topic="Oral">🎤 Oral</button>
+        <button class="menu-btn" data-topic="Evaluación externa">📊 Evaluación externa</button>
+        <button class="menu-btn special" id="summaryBtn">📄 Resumen de un tema</button>
+        <button class="menu-btn special" id="gameBtn">🎮 Juego</button>
+    </div>
+    
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Escribe tu pregunta sobre Literatura...">
+        <button id="sendBtn">Enviar</button>
+    </div>
+    
+    <!-- Quiz Modal -->
+    <div class="modal" id="quizModal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeQuiz">&times;</span>
+            <h2 id="quizTitle">🎮 Quiz de Literatura</h2>
+            <div id="quizContent">
+                <!-- El contenido del quiz se genera aquí -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Config Modal -->
+    <div class="modal" id="configModal">
+        <div class="modal-content config-modal">
+            <span class="close-btn" id="closeConfig">&times;</span>
+            <h2>⚙️ Configuración</h2>
+            <p>URL del Worker de Cloudflare:</p>
+            <input type="text" id="workerUrlInput" placeholder="https://tu-worker.workers.dev">
+            <button class="btn-save" id="saveConfig">Guardar</button>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================
+        // CONFIGURACIÓN - ¡CAMBIAR AQUÍ!
+        // ============================================
+        let WORKER_URL = 'https://TU-WORKER.workers.dev'; // <-- CAMBIA ESTO
+        
+        // Intentar cargar URL guardada
+        const savedUrl = localStorage.getItem('workerUrl');
+        if (savedUrl) {
+            WORKER_URL = savedUrl;
+        }
+        
+        // ============================================
+        // SYSTEM PROMPT
+        // ============================================
+        const SYSTEM_PROMPT = `Eres Chatliteratura, un tutor de Literatura para estudiantes de 16-18 años del Programa del Diploma del IB. 
+        Características:
+        - Responde en español, con lenguaje natural, fluido y accesible para jóvenes.
+        - Usa emojis relacionados con emociones o trabajo académico (📚, 🎭, ✍️, 📝, 🎨, 💡, 🤔, 🌟).
+        - NUNCA uses emojis de dinero (💰, 💵, etc.).
+        - Responde en máximo 3 párrafos, a menos que el usuario pida explícitamente un "resumen extenso".
+        - Si no sabes algo, admítelo con honestidad.
+        - Temas que dominas: Teatro, Narrativa, Poesía, Ensayo, Prueba 1, Prueba 2, Oral, Evaluación externa, figuras literarias (metáfora, símil, personificación, hipérbole, etc.).
+        - Da ejemplos concretos y relevantes para el IB.
+        - Anima al estudiante a profundizar en los temas.`;
+        
+        // ============================================
+        // BANCO DE PREGUNTAS DEL QUIZ (15 preguntas)
+        // ============================================
+        const QUIZ_QUESTIONS = [
+            {
+                question: "¿Qué figura literaria consiste en comparar dos elementos usando 'como' o 'parece'?",
+                options: ["Metáfora", "Símil", "Personificación", "Hipérbole"],
+                correct: 1
+            },
+            {
+                question: "¿Qué género literario se caracteriza por estar escrito en verso y expresar emociones?",
+                options: ["Narrativa", "Teatro", "Poesía", "Ensayo"],
+                correct: 2
+            },
+            {
+                question: "¿Quién escribió 'Cien años de soledad'?",
+                options: ["Gabriel García Márquez", "Mario Vargas Llosa", "Julio Cortázar", "Pablo Neruda"],
+                correct: 0
+            },
+            {
+                question: "¿Qué es una metáfora?",
+                options: ["Comparación explícita", "Figura que atribuye cualidades humanas", "Comparación implícita", "Exageración"],
+                correct: 2
+            },
+            {
+                question: "¿Qué tipo de texto es 'El Quijote'?",
+                options: ["Poesía", "Novela", "Ensayo", "Teatro"],
+                correct: 1
+            },
+            {
+                question: "¿Qué figura literaria es: 'El sol sonríe'?",
+                options: ["Metáfora", "Símil", "Personificación", "Hipérbole"],
+                correct: 2
+            },
+            {
+                question: "¿En qué consiste la Prueba 1 del IB de Literatura?",
+                options: ["Análisis de texto", "Ensayo literario", "Oral individual", "Trabajo escrito"],
+                correct: 0
+            },
+            {
+                question: "¿Qué es un ensayo?",
+                options: ["Historia ficticia", "Texto argumentativo", "Poema", "Obra de teatro"],
+                correct: 1
+            },
+            {
+                question: "¿Quién es el autor de 'La casa de Bernarda Alba'?",
+                options: ["Federico García Lorca", "Antonio Buero Vallejo", "Lope de Vega", "Calderón de la Barca"],
+                correct: 0
+            },
+            {
+                question: "¿Qué figura literaria es una exageración intencionada?",
+                options: ["Metáfora", "Símil", "Personificación", "Hipérbole"],
+                correct: 3
+            },
+            {
+                question: "¿Qué tipo de literatura se escribe para ser representada?",
+                options: ["Poesía", "Narrativa", "Teatro", "Ensayo"],
+                correct: 2
+            },
+            {
+                question: "¿Qué es la narrativa?",
+                options: ["Arte de contar historias", "Arte de escribir poemas", "Arte de argumentar", "Arte de representar"],
+                correct: 0
+            },
+            {
+                question: "¿Qué recurso literario usa: 'Tus ojos son dos luceros'?",
+                options: ["Símil", "Personificación", "Metáfora", "Hipérbole"],
+                correct: 2
+            },
+            {
+                question: "¿Cuál es el objetivo del Oral Individual en el IB?",
+                options: ["Analizar poemas", "Presentar un trabajo de investigación", "Analizar fragmentos literarios", "Escribir un ensayo"],
+                correct: 2
+            },
+            {
+                question: "¿Qué tipo de texto es 'La metamorfosis' de Kafka?",
+                options: ["Poesía", "Ensayo", "Novela corta", "Teatro"],
+                correct: 2
+            }
+        ];
+        
+        // ============================================
+        // ESTADO DE LA APLICACIÓN
+        // ============================================
+        let messageHistory = [];
+        let isWaitingResponse = false;
+        let currentSummary = null;
+        let currentTopic = null;
+        
+        // ============================================
+        // DOM REFERENCES
+        // ============================================
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const configIcon = document.getElementById('configIcon');
+        const configModal = document.getElementById('configModal');
+        const closeConfig = document.getElementById('closeConfig');
+        const workerUrlInput = document.getElementById('workerUrlInput');
+        const saveConfig = document.getElementById('saveConfig');
+        const quizModal = document.getElementById('quizModal');
+        const closeQuiz = document.getElementById('closeQuiz');
+        const quizContent = document.getElementById('quizContent');
+        const summaryBtn = document.getElementById('summaryBtn');
+        const gameBtn = document.getElementById('gameBtn');
+        
+        // ============================================
+        // FUNCIONES DEL CHAT
+        // ============================================
+        
+        function addMessage(text, sender, extraData = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.textContent = text;
+            
+            if (sender === 'bot' && extraData) {
+                if (extraData.summary) {
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'bot-actions';
+                    const pdfBtn = document.createElement('button');
+                    pdfBtn.className = 'menu-btn special';
+                    pdfBtn.textContent = '📄 Descargar PDF';
+                    pdfBtn.onclick = () => downloadPDF(extraData.summary, extraData.topic);
+                    actionsDiv.appendChild(pdfBtn);
+                    messageDiv.appendChild(actionsDiv);
+                }
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function showTypingIndicator() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot';
+            messageDiv.id = 'typingIndicator';
+            messageDiv.innerHTML = `
+                <div class="typing">
+                    <span>.</span><span>.</span><span>.</span>
+                </div>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+        
+        function getMessagesForAPI() {
+            // Obtener últimos 10 pares (20 mensajes)
+            const messages = [
+                { role: 'system', content: SYSTEM_PROMPT }
+            ];
+            
+            // Tomar últimos 10 mensajes (o todos si hay menos)
+            const start = Math.max(0, messageHistory.length - 10);
+            const history = messageHistory.slice(start);
+            
+            history.forEach(msg => {
+                messages.push({
+                    role: msg.role,
+                    content: msg.content
+                });
+            });
+            
+            return messages;
+        }
+        
+        async function sendMessageToWorker(messages) {
+            try {
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ messages })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data.reply;
+            } catch (error) {
+                console.error('Error:', error);
+                throw new Error('Error de conexión con el tutor IA. Verifica que el Worker esté activo y la URL correcta.');
+            }
+        }
+        
+        async function handleUserMessage(text) {
+            if (isWaitingResponse) return;
+            if (!text || text.trim() === '') return;
+            
+            // Verificar si es solicitud de resumen
+            const summaryMatch = text.match(/resumen de (.+)/i);
+            if (summaryMatch) {
+                const topic = summaryMatch[1].trim();
+                await handleSummaryRequest(topic);
+                return;
+            }
+            
+            // Agregar mensaje del usuario
+            addMessage(text, 'user');
+            messageHistory.push({ role: 'user', content: text });
+            
+            // Mostrar indicador de escritura
+            isWaitingResponse = true;
+            showTypingIndicator();
+            
+            try {
+                const messages = getMessagesForAPI();
+                const reply = await sendMessageToWorker(messages);
+                
+                removeTypingIndicator();
+                addMessage(reply, 'bot');
+                messageHistory.push({ role: 'assistant', content: reply });
+                
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage(`❌ ${error.message}`, 'bot');
+            } finally {
+                isWaitingResponse = false;
+            }
+        }
+        
+        async function handleSummaryRequest(topic) {
+            // Mostrar mensaje de usuario
+            addMessage(`Resumen de ${topic}`, 'user');
+            messageHistory.push({ role: 'user', content: `Resumen de ${topic}` });
+            
+            isWaitingResponse = true;
+            showTypingIndicator();
+            
+            try {
+                const prompt = `Genera un resumen extenso sobre "${topic}" de al menos 400 palabras, adecuado para estudiantes de 16 a 18 años del Programa del Diploma del IB. Incluye título, introducción, puntos clave y conclusión. Usa párrafos claros. No uses lenguaje técnico complejo. Relaciona con literatura si es posible.`;
+                
+                const messages = [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    { role: 'user', content: prompt }
+                ];
+                
+                const reply = await sendMessageToWorker(messages);
+                
+                removeTypingIndicator();
+                addMessage(reply, 'bot', { summary: reply, topic: topic });
+                messageHistory.push({ role: 'assistant', content: reply });
+                
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage(`❌ ${error.message}`, 'bot');
+            } finally {
+                isWaitingResponse = false;
+            }
+        }
+        
+        // ============================================
+        // FUNCIONES DEL PDF
+        // ============================================
+        
+        function downloadPDF(text, topic) {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Configurar fuente y tamaño
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Resumen: ${topic}`, 20, 20);
+                
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                
+                // Dividir texto en líneas
+                const lines = doc.splitTextToSize(text, 170);
+                
+                // Agregar texto al PDF
+                let y = 35;
+                for (let i = 0; i < lines.length; i++) {
+                    if (y > 280) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    doc.text(lines[i], 20, y);
+                    y += 7;
+                }
+                
+                // Guardar PDF
+                const fileName = `resumen_${topic.replace(/\s+/g, '_')}.pdf`;
+                doc.save(fileName);
+            } catch (error) {
+                console.error('Error generando PDF:', error);
+                alert('❌ Error al generar el PDF. Verifica que la librería jsPDF esté cargada.');
+            }
+        }
+        
+        // ============================================
+        // FUNCIONES DEL QUIZ
+        // ============================================
+        
+        let quizState = {
+            questions: [],
+            currentIndex: 0,
+            score: 0,
+            answered: false,
+            bestScore: parseInt(localStorage.getItem('quizBestScore')) || 0
+        };
+        
+        function startQuiz() {
+            // Seleccionar 5 preguntas aleatorias
+            const shuffled = [...QUIZ_QUESTIONS].sort(() => Math.random() - 0.5);
+            quizState.questions = shuffled.slice(0, 5);
+            quizState.currentIndex = 0;
+            quizState.score = 0;
+            quizState.answered = false;
+            
+            quizModal.classList.add('active');
+            showQuestion();
+        }
+        
+        function showQuestion() {
+            if (quizState.currentIndex >= quizState.questions.length) {
+                showQuizResult();
+                return;
+            }
+            
+            const q = quizState.questions[quizState.currentIndex];
+            quizContent.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <p><strong>Pregunta ${quizState.currentIndex + 1} de ${quizState.questions.length}</strong></p>
+                    <p style="font-size: 1.1rem; margin-top: 10px;">${q.question}</p>
+                </div>
+                <div class="options" id="quizOptions">
+                    ${q.options.map((opt, idx) => `
+                        <button data-index="${idx}" ${quizState.answered ? 'disabled' : ''}>
+                            ${String.fromCharCode(65 + idx)}. ${opt}
+                        </button>
+                    `).join('')}
+                </div>
+                <div id="quizFeedback"></div>
+            `;
+            
+            // Agregar event listeners
+            document.querySelectorAll('#quizOptions button').forEach(btn => {
+                btn.addEventListener('click', handleAnswer);
+            });
+            
+            quizState.answered = false;
+        }
+        
+        function handleAnswer(e) {
+            if (quizState.answered) return;
+            
+            const button = e.target;
+            const selectedIndex = parseInt(button.dataset.index);
+            const q = quizState.questions[quizState.currentIndex];
+            const isCorrect = selectedIndex === q.correct;
+            
+            quizState.answered = true;
+            if (isCorrect) quizState.score++;
+            
+            // Mostrar feedback
+            const feedback = document.getElementById('quizFeedback');
+            feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+            feedback.textContent = isCorrect ? '✅ ¡Correcto!' : `❌ Incorrecto. La respuesta correcta era: ${q.options[q.correct]}`;
+            
+            // Marcar respuestas
+            document.querySelectorAll('#quizOptions button').forEach(btn => {
+                btn.disabled = true;
+                const idx = parseInt(btn.dataset.index);
+                if (idx === q.correct) btn.classList.add('correct');
+                if (idx === selectedIndex && !isCorrect) btn.classList.add('incorrect');
+            });
+            
+            // Pasar a siguiente pregunta después de 2 segundos
+            setTimeout(() => {
+                quizState.currentIndex++;
+                showQuestion();
+            }, 2000);
+        }
+        
+        function showQuizResult() {
+            const isNewBest = quizState.score > quizState.bestScore;
+            if (isNewBest) {
+                quizState.bestScore = quizState.score;
+                localStorage.setItem('quizBestScore', quizState.bestScore.toString());
+            }
+            
+            quizContent.innerHTML = `
+                <div class="quiz-result">
+                    <h3>🎉 ¡Quiz completado!</h3>
+                    <div class="score">${quizState.score} / ${quizState.questions.length}</
