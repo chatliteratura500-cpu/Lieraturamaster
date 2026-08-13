@@ -890,4 +890,149 @@
             quizContent.innerHTML = `
                 <div class="quiz-result">
                     <h3>🎉 ¡Quiz completado!</h3>
-                    <div class="score">${quizState.score} / ${quizState.questions.length}</
+                    <div class="score">${quizState.score} / ${quizState.questions.length}</div>
+                    <p class="best-score">🏆 Mejor puntuación: ${quizState.bestScore} / ${quizState.questions.length}</p>
+                    ${isNewBest ? '<p style="color: #27ae60; font-weight: bold;">🎊 ¡Nuevo récord! 🎊</p>' : ''}
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="startQuiz()">🔄 Nueva partida</button>
+                        <button class="btn-secondary" onclick="closeQuizModal()">Cerrar</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function closeQuizModal() {
+            quizModal.classList.remove('active');
+        }
+        
+        // ============================================
+        // FUNCIONES DE CONFIGURACIÓN
+        // ============================================
+        
+        function openConfigModal() {
+            workerUrlInput.value = WORKER_URL;
+            configModal.classList.add('active');
+        }
+        
+        function closeConfigModal() {
+            configModal.classList.remove('active');
+        }
+        
+        function saveWorkerUrl() {
+            const url = workerUrlInput.value.trim();
+            if (url) {
+                WORKER_URL = url;
+                localStorage.setItem('workerUrl', url);
+                closeConfigModal();
+                addMessage('✅ URL del Worker actualizada correctamente', 'bot');
+            } else {
+                alert('Por favor, ingresa una URL válida');
+            }
+        }
+        
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        
+        // Enviar mensaje
+        sendBtn.addEventListener('click', () => {
+            const text = userInput.value.trim();
+            if (text) {
+                userInput.value = '';
+                handleUserMessage(text);
+            }
+        });
+        
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+        
+        // Botones del menú
+        document.querySelectorAll('.menu-btn[data-topic]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const topic = btn.dataset.topic;
+                handleUserMessage(`Háblame sobre ${topic} en el contexto del IB`);
+            });
+        });
+        
+        // Botón de resumen
+        summaryBtn.addEventListener('click', () => {
+            const topic = prompt('¿Sobre qué tema quieres un resumen? (ej: "metáfora", "teatro isabelino", "análisis de poemas")');
+            if (topic && topic.trim()) {
+                handleSummaryRequest(topic.trim());
+            }
+        });
+        
+        // Botón de juego
+        gameBtn.addEventListener('click', startQuiz);
+        
+        // Configuración (doble clic)
+        let clickCount = 0;
+        let clickTimer = null;
+        configIcon.addEventListener('click', () => {
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => {
+                    clickCount = 0;
+                }, 300);
+            } else if (clickCount === 2) {
+                clearTimeout(clickTimer);
+                clickCount = 0;
+                openConfigModal();
+            }
+        });
+        
+        closeConfig.addEventListener('click', closeConfigModal);
+        saveConfig.addEventListener('click', saveWorkerUrl);
+        
+        closeQuiz.addEventListener('click', closeQuizModal);
+        
+        // Cerrar modales con clic fuera
+        configModal.addEventListener('click', (e) => {
+            if (e.target === configModal) closeConfigModal();
+        });
+        
+        quizModal.addEventListener('click', (e) => {
+            if (e.target === quizModal) closeQuizModal();
+        });
+        
+        // ============================================
+        // SERVICE WORKER (versión externa)
+        // ============================================
+        
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado con éxito:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registro fallido:', error);
+                    });
+            });
+        }
+        
+        // ============================================
+        // MENSAJE DE BIENVENIDA
+        // ============================================
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            addMessage('🌟 ¡Hola, futura(o) experto! Soy Chatliteratura, tu tutor digital. Puedes preguntarme sobre Literatura o usar el menú.', 'bot');
+        });
+        
+        // ============================================
+        // MANEJO DE ERRORES GLOBALES
+        // ============================================
+        
+        window.addEventListener('error', (e) => {
+            console.error('Error global:', e);
+        });
+        
+        console.log('📚 Chatliteratura inicializado correctamente');
+        console.log('🔗 Worker URL:', WORKER_URL);
+        console.log('🏆 Mejor puntuación:', localStorage.getItem('quizBestScore') || 0);
+    </script>
+</body>
+</html>
